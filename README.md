@@ -1,6 +1,8 @@
 # Quick-VTx
 QuickVTx is a handy tool for changing band and channel on drones VTx and backpack-enabled VRx (e.g. Skyzone SteadyView) using touch screen or AUX switches
 
+![image](https://github.com/Akceptor/Quick-VTx/blob/main/docs/Interface.png)
+
 ## Features
 - Change VTx band and channel using a touch screen interface
 - Support Support automatic scanning
