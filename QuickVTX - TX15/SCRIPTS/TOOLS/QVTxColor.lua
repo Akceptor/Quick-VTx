@@ -933,10 +933,11 @@ refreshButtons = function()
         text = modeText,
         color = TEXT_COLOR,
         textColor = INACTIVE_COLOR,
-        hidden = false,
       })
     else
-      ui.scanTag:set({ hidden = true })
+      ui.scanTag:set({
+        text = "--"
+      })
     end
   end
 end
@@ -951,10 +952,7 @@ local function buildUi()
   end
   ui.page = lvgl.page({
     title = titleText,
-    subtitle = "",
-    scrollable = false,
-    titleColor = ACTIVE_COLOR,
-    titleFont = DBLSIZE,
+    subtitle = ""
   })
 
   local margin = layout.margin
@@ -1082,9 +1080,7 @@ local function buildErrorUi(titleText, messageText)
   ui.page = lvgl.page({
     title = titleText or "Config not found!",
     subtitle = "",
-    scrollable = false,
-    titleColor = ACTIVE_COLOR,
-    titleFont = DBLSIZE,
+    scrollable = false
   })
 
   ui.page:label({
