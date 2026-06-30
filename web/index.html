@@ -489,11 +489,11 @@
     // ── DATA ──────────────────────────────────────────────────
 
     const RADIO_MODELS = [
-      { brand: 'RadioMaster', name: 'TX15',       variant: 'color' },
-      { brand: 'RadioMaster', name: 'TX16S',      variant: 'color' },
-      { brand: 'RadioMaster', name: 'TX16S MK3',  variant: 'color' },
-      { brand: 'RadioMaster', name: 'Boxer',       variant: 'bw' },
-      { brand: 'RadioMaster', name: 'TX12 MK2',   variant: 'bw' },
+      { brand: 'RadioMaster', name: 'TX15',       variant: 'color', img: 'radio-tx15.png' },
+      { brand: 'RadioMaster', name: 'TX16S',      variant: 'color', img: 'radio-tx16s.png' },
+      { brand: 'RadioMaster', name: 'TX16S MK3',  variant: 'color', img: 'radio-tx16s.png' },
+      { brand: 'RadioMaster', name: 'Boxer',       variant: 'bw',   img: 'radio-boxer.png' },
+      { brand: 'RadioMaster', name: 'TX12 MK2',   variant: 'bw',   img: 'radio-tx12mk2.png' },
       { brand: 'RadioMaster', name: 'Zorro',       variant: 'bw' },
       { brand: 'RadioMaster', name: 'Pocket',      variant: 'bw' },
       { brand: 'RadioMaster', name: 'MT12',        variant: 'bw' },
@@ -728,7 +728,7 @@
         models.forEach(model => {
           const card = document.createElement('div');
           card.className = 'model-card';
-          const imgSrc = model.variant === 'color' ? 'images/color-radio.png' : 'images/bw-radio.png';
+          const imgSrc = 'images/' + (model.img || (model.variant === 'color' ? 'radio-tx15.png' : 'radio-boxer.png'));
           card.innerHTML = `<img src="${imgSrc}" alt="${model.name}">
             <div class="model-name">${model.name}</div>
             <div class="check">✓</div>`;
