@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuickVTX Installer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f2ea;
+      --panel: #fffaf2;
+      --ink: #1f1b16;
+      --muted: #6b5c4f;
+      --accent: #c24a2e;
+      --accent-dark: #9e3720;
+      --ring: #d9c5ae;
+      --shadow: rgba(20, 14, 8, 0.15);
+      --success: #2e7d32;
+      --error: #c62828;
+      --warn: #e65100;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Fira Sans", "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, #fde8c9 0%, transparent 55%),
+        radial-gradient(circle at 10% 20%, #f4d6b8 0%, transparent 45%),
+        linear-gradient(140deg, #f7efe6 0%, #efe4d8 100%);
+      min-height: 100vh;
+      padding: 32px 18px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      width: min(680px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--ring);
+      border-radius: 18px;
+      box-shadow: 0 18px 40px var(--shadow);
+      padding: 28px 26px 32px;
+    }
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      align-items: center;
+    }
+    .step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--ring);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      flex-shrink: 0;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .step-dot.active { border-color: var(--accent); color: var(--accent); }
+    .step-dot.done { border-color: var(--success); background: var(--success); color: white; }
+    .step-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--ring);
+      transition: background 0.3s;
+    }
+    .step-connector.done { background: var(--success); }
+    /* Wizard steps */
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; }
+    h2 {
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      letter-spacing: 0.01em;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+    /* Buttons */
+    .btn {
+      border: none;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(194, 74, 46, 0.25);
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent-dark);
+      border: 1.5px solid var(--accent-dark);
+    }
+    .btn-secondary:hover { background: rgba(194, 74, 46, 0.06); }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    /* Radio model grid */
+    .brand-section { margin-bottom: 24px; }
+    .brand-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .model-card {
+      border: 1.5px solid var(--ring);
+      border-radius: 12px;
+      padding: 10px 8px;
+      cursor: pointer;
+      text-align: center;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .model-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px var(--shadow); }
+    .model-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(194, 74, 46, 0.15);
+    }
+    .model-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .model-name { font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+    .model-card .check {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .model-card.selected .check { opacity: 1; }
+    /* Connect step */
+    .instructions-list { list-style: none; margin-bottom: 20px; }
+    .instructions-list li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--ring);
+    }
+    .instructions-list li:last-child { border-bottom: none; }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .folder-confirm {
+      background: #f0f4f0;
+      border: 1px solid #c8e0c8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: var(--success);
+      margin-top: 12px;
+      display: none;
+    }
+    .folder-confirm.visible { display: block; }
+    .compat-warning, .sd-warning {
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .compat-warning.visible, .sd-warning.visible { display: block; }
+    .compat-warning { background: #ffeaea; border: 1px solid #f5c6c6; color: var(--error); }
+    .sd-warning { background: #fff3e0; border: 1px solid #ffe0b2; color: var(--warn); margin-top: 12px; margin-bottom: 0; }
+    /* File list */
+    .file-list { list-style: none; margin-bottom: 20px; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--ring);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-status {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+    .file-status.pending { background: var(--ring); }
+    .file-status.installing { background: #fff3cd; border: 1px solid #ffc107; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .file-status.done { background: var(--success); color: white; }
+    .file-status.error { background: var(--error); color: white; }
+    .file-path { flex: 1; }
+    .file-error-msg { color: var(--error); font-size: 0.78rem; font-family: sans-serif; }
+    /* Progress bar */
+    .progress-bar-wrap {
+      height: 6px;
+      background: var(--ring);
+      border-radius: 99px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    /* Done step */
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--success);
+      color: white;
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .instructions-box {
+      background: #f8f8f4;
+      border: 1px solid var(--ring);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-top: 16px;
+    }
+    .instructions-box h4 { font-size: 0.95rem; margin-bottom: 10px; }
+    .instructions-box ol { padding-left: 20px; color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+    .instructions-box code {
+      background: var(--ring);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+    /* Advanced button */
+    .advanced-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--ring);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      cursor: pointer;
+      box-shadow: 0 4px 12px var(--shadow);
+      z-index: 100;
+    }
+    .advanced-btn:hover { background: var(--ring); }
+    .advanced-accordion {
+      position: fixed;
+      bottom: 58px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--ring);
+      border-radius: 12px;
+      padding: 4px 0;
+      box-shadow: 0 8px 24px var(--shadow);
+      min-width: 180px;
+      z-index: 99;
+      display: none;
+    }
+    .advanced-accordion.open { display: block; }
+    .accordion-item {
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      color: var(--ink);
+      text-decoration: none;
+      display: block;
+    }
+    .accordion-item:hover { background: var(--bg); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-1">1</div>
+      <div class="step-connector" id="conn-1"></div>
+      <div class="step-dot" id="dot-2">2</div>
+      <div class="step-connector" id="conn-2"></div>
+      <div class="step-dot" id="dot-3">3</div>
+      <div class="step-connector" id="conn-3"></div>
+      <div class="step-dot" id="dot-4">4</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="wizard-step active" id="step-1">
+      <h2>Select your radio</h2>
+      <p class="subtitle">Choose the model you want to install QuickVTX on.</p>
+      <div id="radio-picker"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="s1-continue" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="wizard-step" id="step-2">
+      <h2>Connect your radio</h2>
+      <p class="subtitle">Follow these steps before selecting your SD card folder.</p>
+      <div class="compat-warning" id="compat-warning">
+        ⚠ File installation requires Chrome or Edge. Your browser does not support the required API.
+      </div>
+      <ol class="instructions-list">
+        <li><span class="step-num">1</span><span>Power on your radio</span></li>
+        <li><span class="step-num">2</span><span>Connect USB cable to your computer</span></li>
+        <li><span class="step-num">3</span><span>On the radio screen, select <strong>USB Storage (SD)</strong></span></li>
+      </ol>
+      <button class="btn btn-primary" id="pick-folder-btn">Select SD Card folder</button>
+      <div class="folder-confirm" id="folder-confirm">✓ <span id="folder-name"></span></div>
+      <div class="sd-warning" id="sd-warning">
+        ⚠ This folder doesn't look like an EdgeTX SD card root (no MODELS or SCRIPTS directory found). Make sure you selected the SD card root, not a subfolder.
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="s2-back">Back</button>
+        <button class="btn btn-primary" id="s2-continue" disabled>Install</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="wizard-step" id="step-3">
+      <h2>Installing QuickVTX</h2>
+      <p class="subtitle" id="s3-subtitle">Copying files to your SD card…</p>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <ul class="file-list" id="file-list"></ul>
+      <div class="btn-row" id="s3-error-row" style="display:none">
+        <button class="btn btn-secondary" id="s3-back">Back</button>
+        <button class="btn btn-primary" id="s3-retry">Retry</button>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="wizard-step" id="step-4">
+      <div class="success-icon">✓</div>
+      <h2 style="text-align:center">Installation complete!</h2>
+      <p class="subtitle" style="text-align:center">QuickVTX is now on your SD card.</p>
+      <div class="instructions-box" id="done-instructions"></div>
+      <div class="btn-row" style="justify-content:center;margin-top:20px">
+        <button class="btn btn-secondary" id="s4-restart">Install on another radio</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="advanced-btn" id="advanced-btn">Advanced ▾</button>
+  <div class="advanced-accordion" id="advanced-accordion">
+    <a class="accordion-item" href="advanced.html">Legacy tools →</a>
+  </div>
+
+  <script>
+    // ── DATA ──────────────────────────────────────────────────
+
+    const RADIO_MODELS = [
+      { brand: 'RadioMaster', name: 'TX15',       variant: 'color' },
+      { brand: 'RadioMaster', name: 'TX16S',      variant: 'color' },
+      { brand: 'RadioMaster', name: 'TX16S MK3',  variant: 'color' },
+      { brand: 'RadioMaster', name: 'Boxer',       variant: 'bw' },
+      { brand: 'RadioMaster', name: 'TX12 MK2',   variant: 'bw' },
+      { brand: 'RadioMaster', name: 'Zorro',       variant: 'bw' },
+      { brand: 'RadioMaster', name: 'Pocket',      variant: 'bw' },
+      { brand: 'RadioMaster', name: 'MT12',        variant: 'bw' },
+      { brand: 'RadioMaster', name: 'GX12',        variant: 'bw' },
+      { brand: 'Jumper', name: 'T15',      variant: 'color' },
+      { brand: 'Jumper', name: 'T15 Pro',  variant: 'color' },
+      { brand: 'Jumper', name: 'T16',      variant: 'color' },
+      { brand: 'Jumper', name: 'T18',      variant: 'color' },
+      { brand: 'Jumper', name: 'T22',      variant: 'color' },
+      { brand: 'Jumper', name: 'T-Pro',    variant: 'bw' },
+      { brand: 'Jumper', name: 'T-Pro V2', variant: 'bw' },
+      { brand: 'Jumper', name: 'T-Pro S',  variant: 'bw' },
+      { brand: 'Jumper', name: 'Bumblebee',variant: 'bw' },
+      { brand: 'Jumper', name: 'T12',      variant: 'bw' },
+      { brand: 'Jumper', name: 'T12 MAX',  variant: 'bw' },
+      { brand: 'Jumper', name: 'T14',      variant: 'bw' },
+      { brand: 'Jumper', name: 'T20',      variant: 'bw' },
+      { brand: 'Jumper', name: 'T20 V2',   variant: 'bw' },
+    ];
+
+    const FILE_MANIFEST = {
+      color: [
+        { src: 'SCRIPTS/FUNCTIONS/qvtx.lua',            dest: 'SCRIPTS/FUNCTIONS/qvtx.lua' },
+        { src: 'SCRIPTS/TOOLS/ConfigWizardColor.lua',   dest: 'SCRIPTS/TOOLS/ConfigWizardColor.lua' },
+        { src: 'SCRIPTS/TOOLS/QVTxColor.lua',           dest: 'SCRIPTS/TOOLS/QVTxColor.lua' },
+        { src: 'SCRIPTS/TOOLS/_internal/vtx_auto.lua',  dest: 'SCRIPTS/TOOLS/_internal/vtx_auto.lua' },
+        { src: 'SCRIPTS/TOOLS/_internal/logo.png',      dest: 'SCRIPTS/TOOLS/_internal/logo.png' },
+      ],
+      bw: [
+        { src: 'SCRIPTS/TELEMETRY/qvtx.lua',            dest: 'SCRIPTS/TELEMETRY/qvtx.lua' },
+        { src: 'SCRIPTS/TOOLS/ConfigWizardBW.lua',      dest: 'SCRIPTS/TOOLS/ConfigWizardBW.lua' },
+        { src: 'SCRIPTS/TOOLS/QVTxBW.lua',              dest: 'SCRIPTS/TOOLS/QVTxBW.lua' },
+        { src: 'SCRIPTS/TOOLS/_internal/vtx_auto.lua',  dest: 'SCRIPTS/TOOLS/_internal/vtx_auto.lua' },
+      ],
+    };
+
+    const RAW_BASE = {
+      color: 'https://raw.githubusercontent.com/Akceptor/Quick-VTx/main/QuickVTX%20-%20TX15/',
+      bw:    'https://raw.githubusercontent.com/Akceptor/Quick-VTx/main/QuickVTX%20-%20BW/',
+    };
+
+    function getRawUrl(variant, srcPath) {
+      return RAW_BASE[variant] + srcPath;
+    }
+
+    // ── INLINE ASSERTIONS (run once on load, errors go to console) ──
+    (function runAssertions() {
+      function assert(cond, msg) {
+        if (!cond) console.error('ASSERTION FAILED: ' + msg);
+      }
+      assert(RADIO_MODELS.filter(m => m.variant === 'color').length === 8, 'color model count should be 8');
+      assert(RADIO_MODELS.filter(m => m.variant === 'bw').length === 15, 'BW model count should be 15');
+      assert(RADIO_MODELS.find(m => m.name === 'TX15').variant === 'color', 'TX15 must be color');
+      assert(RADIO_MODELS.find(m => m.name === 'Boxer').variant === 'bw', 'Boxer must be bw');
+      assert(RADIO_MODELS.find(m => m.name === 'T22').variant === 'color', 'T22 must be color');
+      assert(RADIO_MODELS.find(m => m.name === 'T20').variant === 'bw', 'T20 must be bw');
+      assert(FILE_MANIFEST.color.length === 5, 'color manifest should have 5 files');
+      assert(FILE_MANIFEST.bw.length === 4, 'BW manifest should have 4 files');
+      assert(getRawUrl('color', 'SCRIPTS/FUNCTIONS/qvtx.lua').includes('TX15'), 'color URL must include TX15');
+      assert(getRawUrl('bw', 'SCRIPTS/TELEMETRY/qvtx.lua').includes('BW'), 'BW URL must include BW');
+      assert(getRawUrl('color', 'SCRIPTS/TOOLS/QVTxColor.lua') ===
+        'https://raw.githubusercontent.com/Akceptor/Quick-VTx/main/QuickVTX%20-%20TX15/SCRIPTS/TOOLS/QVTxColor.lua',
+        'color URL full match');
+    })();
+
+    // ── STATE ─────────────────────────────────────────────────
+
+    const state = {
+      step: 1,
+      model: null,    // { brand, name, variant }
+      rootDir: null,  // FileSystemDirectoryHandle
+    };
+
+    // ── STEP NAVIGATION ───────────────────────────────────────
+
+    function goToStep(n) {
+      document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+      document.getElementById('step-' + n).classList.add('active');
+
+      [1, 2, 3, 4].forEach(i => {
+        const dot = document.getElementById('dot-' + i);
+        dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+        dot.textContent = i < n ? '✓' : String(i);
+      });
+      [1, 2, 3].forEach(i => {
+        document.getElementById('conn-' + i).classList.toggle('done', i < n);
+      });
+
+      state.step = n;
+      if (n === 3) startInstall();
+      if (n === 4) renderDoneInstructions();
+    }
+
+    // ── STEP 1: RADIO PICKER ──────────────────────────────────
+
+    function renderRadioPicker() {
+      const container = document.getElementById('radio-picker');
+      ['RadioMaster', 'Jumper'].forEach(brand => {
+        const models = RADIO_MODELS.filter(m => m.brand === brand);
+        const section = document.createElement('div');
+        section.className = 'brand-section';
+        const label = document.createElement('div');
+        label.className = 'brand-label';
+        label.textContent = brand;
+        const grid = document.createElement('div');
+        grid.className = 'model-grid';
+        models.forEach(model => {
+          const card = document.createElement('div');
+          card.className = 'model-card';
+          const imgSrc = model.variant === 'color' ? 'images/color-radio.png' : 'images/bw-radio.png';
+          card.innerHTML = `<img src="${imgSrc}" alt="${model.name}">
+            <div class="model-name">${model.name}</div>
+            <div class="check">✓</div>`;
+          card.addEventListener('click', () => {
+            document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            state.model = model;
+            document.getElementById('s1-continue').disabled = false;
+          });
+          grid.appendChild(card);
+        });
+        section.appendChild(label);
+        section.appendChild(grid);
+        container.appendChild(section);
+      });
+    }
+
+    // ── STEP 2: FOLDER PICKER ─────────────────────────────────
+
+    function initStep2() {
+      if (!('showDirectoryPicker' in window)) {
+        document.getElementById('compat-warning').classList.add('visible');
+        document.getElementById('pick-folder-btn').disabled = true;
+      }
+    }
+
+    async function pickFolder() {
+      try {
+        const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+        state.rootDir = dir;
+        document.getElementById('folder-name').textContent = dir.name;
+        document.getElementById('folder-confirm').classList.add('visible');
+        document.getElementById('s2-continue').disabled = false;
+
+        let looksRight = false;
+        for await (const [name] of dir.entries()) {
+          if (name === 'MODELS' || name === 'SCRIPTS') { looksRight = true; break; }
+        }
+        document.getElementById('sd-warning').classList.toggle('visible', !looksRight);
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error('pickFolder error:', e);
+      }
+    }
+
+    // ── STEP 3: INSTALLER ─────────────────────────────────────
+
+    async function getOrCreateDir(root, parts) {
+      let current = root;
+      for (const part of parts) {
+        current = await current.getDirectoryHandle(part, { create: true });
+      }
+      return current;
+    }
+
+    async function writeFile(root, destPath, blob) {
+      const parts = destPath.split('/');
+      const fileName = parts.pop();
+      const dir = await getOrCreateDir(root, parts);
+      const fh = await dir.getFileHandle(fileName, { create: true });
+      const writable = await fh.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }
+
+    async function startInstall() {
+      const files = FILE_MANIFEST[state.model.variant];
+      const listEl = document.getElementById('file-list');
+      const progressEl = document.getElementById('progress-bar');
+      const errorRow = document.getElementById('s3-error-row');
+      listEl.innerHTML = '';
+      errorRow.style.display = 'none';
+      progressEl.style.width = '0%';
+
+      const safeId = path => path.replace(/[^a-zA-Z0-9]/g, '_');
+
+      const items = files.map(f => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.innerHTML = `<div class="file-status pending" id="st_${safeId(f.dest)}"></div>
+          <span class="file-path">${f.dest}</span>
+          <span class="file-error-msg" id="err_${safeId(f.dest)}"></span>`;
+        listEl.appendChild(li);
+        return f;
+      });
+
+      let done = 0;
+      let hasError = false;
+
+      for (const item of items) {
+        const id = safeId(item.dest);
+        const statusEl = document.getElementById('st_' + id);
+        const errEl = document.getElementById('err_' + id);
+        statusEl.className = 'file-status installing';
+        statusEl.textContent = '↻';
+        try {
+          const resp = await fetch(getRawUrl(state.model.variant, item.src));
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const blob = await resp.blob();
+          await writeFile(state.rootDir, item.dest, blob);
+          statusEl.className = 'file-status done';
+          statusEl.textContent = '✓';
+        } catch (e) {
+          statusEl.className = 'file-status error';
+          statusEl.textContent = '✕';
+          errEl.textContent = ' — ' + e.message;
+          hasError = true;
+        }
+        done++;
+        progressEl.style.width = Math.round((done / items.length) * 100) + '%';
+      }
+
+      if (hasError) {
+        errorRow.style.display = 'flex';
+        document.getElementById('s3-subtitle').textContent = 'Some files failed to copy.';
+      } else {
+        document.getElementById('s3-subtitle').textContent = 'All files copied successfully!';
+        setTimeout(() => goToStep(4), 700);
+      }
+    }
+
+    // ── STEP 4: DONE ──────────────────────────────────────────
+
+    function renderDoneInstructions() {
+      const box = document.getElementById('done-instructions');
+      if (state.model.variant === 'color') {
+        box.innerHTML = `<h4>Getting started — Color screen radio</h4>
+          <ol>
+            <li>Eject USB and reboot your radio.</li>
+            <li>Go to <code>TOOLS → QVTxColor</code> and run the Config Wizard on first launch.</li>
+            <li>To switch channels in the background:<br>
+              Go to <code>Special Functions</code> → pick <code>Lua Script</code>
+              → set <code>Repeat = ON</code> → value: <code>qvtx.lua</code></li>
+          </ol>`;
+      } else {
+        box.innerHTML = `<h4>Getting started — Monochrome screen radio</h4>
+          <ol>
+            <li>Eject USB and reboot your radio.</li>
+            <li>Go to <code>TOOLS → QVTxBW</code> and run the Config Wizard on first launch.</li>
+            <li>To use the VTx control overlay:<br>
+              Go to <code>Telemetry screen</code> settings and assign the <code>qvtx</code> script.</li>
+          </ol>`;
+      }
+    }
+
+    // ── ADVANCED ACCORDION ────────────────────────────────────
+
+    const advBtn = document.getElementById('advanced-btn');
+    const advPanel = document.getElementById('advanced-accordion');
+    advBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      advPanel.classList.toggle('open');
+    });
+    document.addEventListener('click', () => advPanel.classList.remove('open'));
+
+    // ── INIT + BUTTON WIRING ──────────────────────────────────
+
+    renderRadioPicker();
+    initStep2();
+
+    document.getElementById('s1-continue').addEventListener('click', () => goToStep(2));
+    document.getElementById('s2-back').addEventListener('click', () => goToStep(1));
+    document.getElementById('pick-folder-btn').addEventListener('click', pickFolder);
+    document.getElementById('s2-continue').addEventListener('click', () => goToStep(3));
+    document.getElementById('s3-back').addEventListener('click', () => {
+      document.getElementById('s3-error-row').style.display = 'none';
+      goToStep(2);
+    });
+    document.getElementById('s3-retry').addEventListener('click', startInstall);
+    document.getElementById('s4-restart').addEventListener('click', () => {
+      state.model = null;
+      state.rootDir = null;
+      document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById('s1-continue').disabled = true;
+      document.getElementById('s2-continue').disabled = true;
+      document.getElementById('folder-confirm').classList.remove('visible');
+      document.getElementById('sd-warning').classList.remove('visible');
+      goToStep(1);
+    });
+  </script>
+</body>
+</html>

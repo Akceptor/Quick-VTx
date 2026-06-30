@@ -1,0 +1,10 @@
+# IDE
+.idea/
+*.iml
+
+# Superpowers scratch (internal planning docs)
+.superpowers/
+
+# Allow web assets (override any global ignores for *.html, *.png)
+!web/
+!web/**
