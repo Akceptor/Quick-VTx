@@ -382,7 +382,7 @@
       <ul class="file-list" id="file-list"></ul>
       <div class="btn-row" id="s3-error-row" style="display:none">
         <button class="btn btn-secondary" id="s3-back">Back</button>
-        <button class="btn btn-primary" id="s3-retry">Retry</button>
+        <button class="btn btn-primary" id="s3-retry">Retry all files</button>
       </div>
     </div>
 
@@ -582,8 +582,13 @@
       const dir = await getOrCreateDir(root, parts);
       const fh = await dir.getFileHandle(fileName, { create: true });
       const writable = await fh.createWritable();
-      await writable.write(blob);
-      await writable.close();
+      try {
+        await writable.write(blob);
+        await writable.close();
+      } catch (e) {
+        await writable.abort();
+        throw e;
+      }
     }
 
     async function startInstall() {
@@ -593,6 +598,7 @@
       const errorRow = document.getElementById('s3-error-row');
       listEl.innerHTML = '';
       errorRow.style.display = 'none';
+      document.getElementById('s3-subtitle').textContent = 'Copying files to your SD card…';
       progressEl.style.width = '0%';
 
       const safeId = path => path.replace(/[^a-zA-Z0-9]/g, '_');
@@ -626,7 +632,10 @@
         } catch (e) {
           statusEl.className = 'file-status error';
           statusEl.textContent = '✕';
-          errEl.textContent = ' — ' + e.message;
+          const msg = e instanceof TypeError
+            ? ' — Network error. Check your internet connection.'
+            : ' — ' + e.message;
+          errEl.textContent = msg;
           hasError = true;
         }
         done++;

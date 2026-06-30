@@ -2,6 +2,9 @@
 .idea/
 *.iml
 
+# macOS metadata
+**/.DS_Store
+
 # Superpowers scratch (internal planning docs)
 .superpowers/
 
